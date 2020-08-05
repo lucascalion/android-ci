@@ -3,10 +3,10 @@ LABEL maintainer="Lucas de Souza"
 # Based on https://github.com/yorickvanzweeden/android-ci
 
 # Variables taken from variables.env
-ARG AVD_NAME
-ARG ANDROID_HOME
-ARG VERSION_COMPILE_VERSION
-ARG VERSION_SDK_TOOLS
+ARG AVD_NAME=myadv
+ARG ANDROID_HOME=/sdk
+ARG VERSION_COMPILE_VERSION=29
+ARG VERSION_SDK_TOOLS=6609375
 
 # Expect requires tzdata, which requires a timezone specified
 RUN ln -fs /usr/share/zoneinfo/Europe/Amsterdam /etc/localtime
