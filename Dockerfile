@@ -1,5 +1,6 @@
 FROM ubuntu:18.04
-LABEL maintainer="Yorick van Zweeden"
+LABEL maintainer="Lucas de Souza"
+# Based on https://github.com/yorickvanzweeden/android-ci
 
 # Variables taken from variables.env
 ARG AVD_NAME
@@ -12,9 +13,11 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Amsterdam /etc/localtime
 
 RUN apt-get -qq update && \
       apt-get install -qqy --no-install-recommends \
+      locales \
       bridge-utils \
       bzip2 \
       curl \
+      wget \
       # expect: Passing commands to telnet
       expect \
       git-core \
@@ -38,34 +41,40 @@ RUN apt-get -qq update && \
       unzip \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN locale-gen "en_US.UTF-8" && \
+    update-locale LC_ALL="en_US.UTF-8"
+
 # Configurating Java
 RUN rm -f /etc/ssl/certs/java/cacerts; \
     /var/lib/dpkg/info/ca-certificates-java.postinst configure
 
 # Downloading SDK-tools (AVDManager, SDKManager, etc)
-RUN curl -s https://dl.google.com/android/repository/sdk-tools-linux-"${VERSION_SDK_TOOLS}".zip > /sdk.zip && \
-    unzip /sdk.zip -d /sdk && \
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
+    wget --output-document=/sdk.zip https://dl.google.com/android/repository/commandlinetools-linux-${VERSION_SDK_TOOLS}_latest.zip && \
+    unzip /sdk.zip -d ${ANDROID_HOME}/cmdline-tools && \
     rm -v /sdk.zip
 
-# Add Android licences instead of acceptance
-RUN mkdir -p $ANDROID_HOME/licenses/ \
-  && echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > $ANDROID_HOME/licenses/android-sdk-license \
-  && echo "84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+ENV PATH /$ANDROID_HOME/cmdline-tools/tools/bin:$PATH
+
+RUN echo yes | sdkmanager --licenses
+
+RUN mkdir -p /root/.android && \
+    touch /root/.android/repositories.cfg
 
 # Download packages
-ADD packages.txt /sdk
-RUN mkdir -p /root/.android && \
-  touch /root/.android/repositories.cfg && \
-  ${ANDROID_HOME}/tools/bin/sdkmanager --update 
-RUN while read -r package; do PACKAGES="${PACKAGES}${package} "; done < /sdk/packages.txt && \
-    ${ANDROID_HOME}/tools/bin/sdkmanager ${PACKAGES}
+ADD packages.txt ${ANDROID_HOME}
+RUN sdkmanager --update
+RUN sdkmanager --package_file=${ANDROID_HOME}/packages.txt
 
 # Download system image for compiled version (separate statement for build cache)
-RUN echo y | ${ANDROID_HOME}/tools/bin/sdkmanager "system-images;android-${VERSION_COMPILE_VERSION};google_apis;x86_64"
+RUN echo y | sdkmanager "system-images;android-${VERSION_COMPILE_VERSION};google_apis;x86_64"
+
+RUN rm -rf /etc/ssl/certs/NetLock_Arany* && \
+    rm -rf /usr/share/ca-certificates/mozilla/NetLock_Arany*
 
 # Create AVD
 RUN mkdir ~/.android/avd  && \
-      echo no | ${ANDROID_HOME}/tools/bin/avdmanager create avd -n ${AVD_NAME} -k "system-images;android-${VERSION_COMPILE_VERSION};google_apis;x86_64"
+      echo no | avdmanager create avd -n ${AVD_NAME} -k "system-images;android-${VERSION_COMPILE_VERSION};google_apis;x86_64"
 
 # Copy scripts to container for running the emulator and creating a snapshot
 COPY scripts/* /

@@ -1,22 +1,23 @@
 # Android CI
+### Based on https://github.com/yorickvanzweeden/android-ci docker image
 ### Continous Integration (CI) for Android apps with an emulator
 By using snapshots, the emulator in this image is able to boot in under 15 seconds. This Docker image contains the Android SDK, emulator packages and an AVD with a snapshot.
 
 # Image
 ```yml
-image: yorickvanzweeden/android-ci:latest
+image: lucascalion/android-ci:latest
 ```
 
 Specifications
-* Build-tools: 28.0.2
-* Platform: 24
-* System-image: android-24;google_apis;x86_64
+* Build-tools: 29.0.3
+* Platform: 29
+* System-image: android-29;google_apis;x86_64
 
 # Sample GitLab usage
 *.gitlab-ci.yml*
 
 ```yml
-image: yorickvanzweeden/android-ci:latest
+image: lucascalion/android-ci:latest
 
 before_script:
     - export GRADLE_USER_HOME=`pwd`/.gradle
@@ -28,22 +29,10 @@ cache:
      - .gradle/
 
 stages:
-  - build
-  - test_instrumented
-
-build:
-  stage: build
-  script:
-     - ./gradlew assembleDebug
-  artifacts:
-    expire_in: 1 week
-    paths:
-      - app/build/outputs/apk/
+  - test
 
 instrumentedTests:
-  stage: test_instrumented
-  only:
-    - scheduled
+  stage: test
   script:
     # Running emulator
     - /sdk/emulator/emulator -avd ${AVD_NAME} -no-window -no-audio -snapshot ${SNAPSHOT_NAME} &
@@ -53,7 +42,7 @@ instrumentedTests:
 
     # Run instrumented Android tests
     - /sdk/platform-tools/adb shell input keyevent 82
-    - ./gradlew cAT
+    - ./gradlew connectedCheck
 ```
 
 

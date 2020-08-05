@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 echo "#############################"
 echo " Running privileged commands"
 echo "#############################"
